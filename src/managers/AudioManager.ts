@@ -12,13 +12,13 @@ const AudioManager = {
     try {
       await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
       const { sound: cs } = await Audio.Sound.createAsync(
-        require('../../assets/sounds/check.mp3'),
+        require('../../assets/sounds/check.wav'),
         { shouldPlay: false }
       );
       _checkSound = cs;
 
       const { sound: ms } = await Audio.Sound.createAsync(
-        require('../../assets/sounds/milestone.mp3'),
+        require('../../assets/sounds/milestone.wav'),
         { shouldPlay: false }
       );
       _milestoneSound = ms;

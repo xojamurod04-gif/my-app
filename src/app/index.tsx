@@ -2,6 +2,7 @@
 // HOME SCREEN — Flutter HomeScreen ning to'liq React Native versiyasi
 // ─────────────────────────────────────────────────────────────────────────────
 
+import 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';

@@ -5,7 +5,17 @@
 import { MMKV } from 'react-native-mmkv';
 import { HabitModel, HabitJSON } from '../models/HabitModel';
 
-export const storage = new MMKV();
+let storage: any = {
+  getString: () => null,
+  set: () => {},
+  getBoolean: () => false,
+};
+
+try {
+  storage = new MMKV();
+} catch (e) {
+  console.warn('MMKV Init Error:', e);
+}
 
 const HABITS_KEY = 'momentum_habits';
 const PREMIUM_KEY = 'momentum_premium';
