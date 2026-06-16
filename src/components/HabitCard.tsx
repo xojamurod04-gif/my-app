@@ -16,11 +16,11 @@ import Animated, {
   withSequence,
   withTiming,
   withSpring,
-  runOnJS,
   SharedValue,
+  SlideInDown,
+  SlideOutUp,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import Svg, { Circle } from 'react-native-svg';
 import { HabitModel } from '../models/HabitModel';
 import { kAccentColors } from '../constants/colors';
 import CheckButton from './CheckButton';
@@ -40,15 +40,13 @@ interface Particle {
   angle: number;
   speed: number;
   size: number;
-  offset: number;
 }
 
 function makeParticles(): Particle[] {
-  return Array.from({ length: 12 }, () => ({
+  return Array.from({ length: 14 }, () => ({
     angle: Math.random() * Math.PI * 2,
-    speed: 60 + Math.random() * 80,
-    size: 4 + Math.random() * 5,
-    offset: Math.random() * 0.2,
+    speed: 40 + Math.random() * 60,
+    size: 3 + Math.random() * 5,
   }));
 }
 
@@ -59,7 +57,6 @@ export default function HabitCard({ habit, onToggle, onLongPress }: Props) {
   const btnScale = useSharedValue(1);
   const pulseOpacity = useSharedValue(0);
   const particleProgress = useSharedValue(0);
-  const streakDisplay = useSharedValue(habit.streak);
   const particles = useRef<Particle[]>([]).current;
 
   const wasCompleted = useRef(habit.isCompletedToday);
@@ -70,27 +67,27 @@ export default function HabitCard({ habit, onToggle, onLongPress }: Props) {
       triggerCheckAnim();
     }
     wasCompleted.current = nowCompleted;
-    streakDisplay.value = habit.streak;
-  }, [habit.isCompletedToday, habit.streak]);
+  }, [habit.isCompletedToday]);
 
   function triggerCheckAnim() {
-    // Tugma scale
+    // Tugma scale (tugma qadami)
     btnScale.value = withSequence(
       withTiming(1.22, { duration: 80 }),
       withSpring(1, { damping: 10 })
     );
-    // Pulse
+    // Pulse (puls qadami)
     pulseOpacity.value = withSequence(
       withTiming(1, { duration: 60 }),
       withTiming(0, { duration: 90 })
     );
-    // Particles
+    // Particles (zarracha qadami)
     particles.splice(0, particles.length, ...makeParticles());
     particleProgress.value = 0;
     particleProgress.value = withTiming(1, { duration: 600 });
   }
 
   const handleToggle = useCallback(() => {
+    // Haptika Light (belgilash)
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onToggle();
   }, [onToggle]);
@@ -122,7 +119,7 @@ export default function HabitCard({ habit, onToggle, onLongPress }: Props) {
         ]}
       />
 
-      {/* Particle SVG */}
+      {/* Particle Overlay (Animated.View orqali) */}
       <ParticleOverlay
         particles={particles}
         progress={particleProgress}
@@ -137,9 +134,17 @@ export default function HabitCard({ habit, onToggle, onLongPress }: Props) {
               {habit.emoji ? `${habit.emoji} ${habit.name}` : habit.name}
             </Text>
             <View style={styles.streakRow}>
-              <Text style={[styles.streakNum, { color: done ? accent : accent + '6B' }]}>
-                {habit.streak}
-              </Text>
+              {/* Slot animatsiyasi - raqam aylanib o'zgaradi */}
+              <View style={styles.slotContainer}>
+                <Animated.Text
+                  key={habit.streak}
+                  entering={SlideInDown.springify().damping(12)}
+                  exiting={SlideOutUp.springify().damping(12)}
+                  style={[styles.streakNum, { color: done ? accent : accent + '6B' }]}
+                >
+                  {habit.streak}
+                </Animated.Text>
+              </View>
               <Text style={styles.streakLabel}>{'KETMA-KET\nKUN'}</Text>
             </View>
           </View>
@@ -162,41 +167,46 @@ interface ParticleOverlayProps {
 }
 
 function ParticleOverlay({ particles, progress, accent }: ParticleOverlayProps) {
-  const AnimatedSvg = Animated.createAnimatedComponent(Svg);
-  // SVG ni Reanimated bilan yangilash uchun
-  const style = useAnimatedStyle(() => ({
-    opacity: progress.value > 0 && progress.value < 1 ? 1 : 0,
-  }));
-
   if (particles.length === 0) return null;
 
-  // Particle pozitsiyalarini progress ga qarab hisoblash
-  // (SVG static, real-time uchun Canvas/Skia kerak bo'ladi)
-  // Bu yerda sodda ko'rsatish
   return (
-    <Animated.View
-      pointerEvents="none"
-      style={[StyleSheet.absoluteFill, style]}
-    >
-      <Svg width="100%" height="100%">
-        {particles.map((p, i) => {
-          const prog = 0.5; // placeholder
-          const dist = p.speed * prog;
-          const cx = Math.cos(p.angle) * dist + 250;
-          const cy = Math.sin(p.angle) * dist + 40;
-          return (
-            <Circle
-              key={i}
-              cx={cx}
-              cy={cy}
-              r={p.size}
-              fill={accent}
-              opacity={0.6}
-            />
-          );
-        })}
-      </Svg>
-    </Animated.View>
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      {particles.map((p, i) => {
+        const style = useAnimatedStyle(() => {
+          const prog = progress.value;
+          // Ease-out effect for distance
+          const dist = p.speed * prog * (2 - prog);
+          const cx = Math.cos(p.angle) * dist;
+          const cy = Math.sin(p.angle) * dist;
+          return {
+            opacity: prog > 0 && prog < 1 ? 1 - prog : 0,
+            transform: [
+              { translateX: cx },
+              { translateY: cy },
+              { scale: prog > 0.8 ? (1 - prog) * 5 : 1 }
+            ],
+          };
+        });
+
+        return (
+          <Animated.View
+            key={i}
+            style={[
+              {
+                position: 'absolute',
+                right: 36, // Tugma markaziga to'g'irlash
+                top: 40,
+                width: p.size * 2,
+                height: p.size * 2,
+                borderRadius: p.size,
+                backgroundColor: accent,
+              },
+              style,
+            ]}
+          />
+        );
+      })}
+    </View>
   );
 }
 
@@ -250,6 +260,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     marginTop: 4,
   },
+  slotContainer: {
+    height: 72,
+    overflow: 'hidden',
+    justifyContent: 'flex-end',
+  },
   streakNum: {
     fontSize: 68,
     fontWeight: '900',
@@ -264,3 +279,4 @@ const styles = StyleSheet.create({
     marginLeft: 6,
   },
 });
+

@@ -4,7 +4,7 @@
 
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   FlatList,
   Modal,
@@ -23,125 +23,51 @@ import Animated, {
 import AddButton from '../components/AddButton';
 import HabitCard from '../components/HabitCard';
 import UpgradeSheet from '../components/UpgradeSheet';
+import MilestoneScreen from '../components/MilestoneScreen';
 import { kFreeLimit } from '../constants/colors';
 import AudioManager from '../managers/AudioManager';
-import { HabitModel, fmtDate, generateId, todayStr } from '../models/HabitModel';
-import HabitStorage from '../storage/HabitStorage';
-
-const MILESTONE_STREAKS = [7, 14, 30, 60, 100];
-
-// Demo ma'lumotlar
-function pastDays(daysAgo: number[]): string[] {
-  return daysAgo.map((n) => {
-    const d = new Date();
-    d.setDate(d.getDate() - n);
-    return fmtDate(d);
-  });
-}
-
-function seedDemo(): HabitModel[] {
-  return [
-    new HabitModel({
-      id: generateId(),
-      name: 'Ertalab yugurish',
-      colorHex: '#1A0533',
-      emoji: '🏃',
-      createdAt: todayStr(),
-      completions: pastDays([0, 1, 2, 4, 5, 6, 8]),
-    }),
-    new HabitModel({
-      id: generateId(),
-      name: "Kitob o'qish",
-      colorHex: '#013A2E',
-      emoji: '📚',
-      createdAt: todayStr(),
-      completions: pastDays([0, 2, 3, 5, 7]),
-    }),
-    new HabitModel({
-      id: generateId(),
-      name: 'Meditatsiya',
-      colorHex: '#2B1500',
-      emoji: '🧘',
-      createdAt: todayStr(),
-      completions: pastDays([1, 3, 4, 6]),
-    }),
-    new HabitModel({
-      id: generateId(),
-      name: '22 da uxlash',
-      colorHex: '#1F0018',
-      emoji: '🌙',
-      createdAt: todayStr(),
-      completions: pastDays([0, 1, 5]),
-    }),
-  ];
-}
+import { HabitModel } from '../models/HabitModel';
+import { useHabitStore } from '../store/useHabitStore';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const [habits, setHabits] = useState<HabitModel[]>([]);
-  const [isPremium, setIsPremium] = useState(false);
-  const [showUpgrade, setShowUpgrade] = useState(false);
-  const [milestoneStreak, setMilestoneStreak] = useState<number | null>(null);
+  
+  const habits = useHabitStore((s) => s.habits);
+  const isPremium = useHabitStore((s) => s.isPremium);
+  const milestoneStreak = useHabitStore((s) => s.milestoneStreak);
+  const allDoneFlashTriggered = useHabitStore((s) => s.allDoneFlashTriggered);
+  
+  const init = useHabitStore((s) => s.init);
+  const setPremium = useHabitStore((s) => s.setPremium);
+  const setMilestoneStreak = useHabitStore((s) => s.setMilestoneStreak);
+  const resetAllDoneFlash = useHabitStore((s) => s.resetAllDoneFlash);
+  const toggleHabit = useHabitStore((s) => s.toggleHabit);
 
-  // All-done flash overlay
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const flashOpacity = useSharedValue(0);
 
   useEffect(() => {
-    (async () => {
-      await AudioManager.init();
-      const loaded = await HabitStorage.loadAll();
-      const premium = await HabitStorage.isPremium();
-      setIsPremium(premium);
-      if (loaded.length === 0) {
-        const demo = seedDemo();
-        await HabitStorage.saveAll(demo);
-        setHabits(demo);
-      } else {
-        setHabits(loaded);
-      }
-    })();
+    init();
     return () => { AudioManager.dispose(); };
   }, []);
 
-  const allDone = habits.length > 0 && habits.every((h) => h.isCompletedToday);
+  useEffect(() => {
+    if (allDoneFlashTriggered) {
+      triggerAllDoneFlash();
+      resetAllDoneFlash();
+    }
+  }, [allDoneFlashTriggered]);
 
   function triggerAllDoneFlash() {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     flashOpacity.value = withSequence(
       withTiming(0.18, { duration: 100 }),
       withTiming(0, { duration: 300 })
     );
   }
 
-  const handleToggle = useCallback(
-    async (habit: HabitModel) => {
-      const wasAllDone = habits.every((h) => h.isCompletedToday);
-      const today = todayStr();
-
-      if (habit.isCompletedToday) {
-        habit.completions.delete(today);
-      } else {
-        habit.completions.add(today);
-        AudioManager.playCheck();
-      }
-
-      const updated = [...habits];
-      setHabits(updated);
-      await HabitStorage.saveAll(updated);
-
-      const nowAllDone = updated.every((h) => h.isCompletedToday);
-      if (!wasAllDone && nowAllDone) triggerAllDoneFlash();
-
-      // Milestone tekshirish
-      if (habit.isCompletedToday) {
-        const s = habit.streak;
-        if (MILESTONE_STREAKS.includes(s)) {
-          setTimeout(() => setMilestoneStreak(s), 600);
-        }
-      }
-    },
-    [habits]
-  );
+  function handleToggle(habit: HabitModel) {
+    toggleHabit(habit.id);
+  }
 
   function handleOpenAdd() {
     if (habits.length >= kFreeLimit && !isPremium) {
@@ -153,12 +79,6 @@ export default function HomeScreen() {
 
   function handleOpenEdit(habit: HabitModel) {
     router.push({ pathname: '/add-edit', params: { id: habit.id } });
-  }
-
-  // Habits ni qayta yuklab refresh
-  async function refreshHabits() {
-    const loaded = await HabitStorage.loadAll();
-    setHabits(loaded);
   }
 
   const flashStyle = useAnimatedStyle(() => ({
@@ -174,7 +94,6 @@ export default function HomeScreen() {
           data={habits}
           keyExtractor={(h) => h.id}
           contentContainerStyle={styles.list}
-          onLayout={refreshHabits}
           renderItem={({ item }) => (
             <HabitCard
               habit={item}
@@ -202,8 +121,8 @@ export default function HomeScreen() {
       >
         <View style={styles.modalOverlay}>
           <UpgradeSheet
-            onPurchased={async () => {
-              setIsPremium(true);
+            onPurchased={() => {
+              setPremium(true);
               setShowUpgrade(false);
             }}
             onDismiss={() => setShowUpgrade(false)}
@@ -234,7 +153,6 @@ export default function HomeScreen() {
 
 // Milestone inline (modal ichida)
 function MilestoneInline({ streak, onClose }: { streak: number; onClose: () => void }) {
-  const { default: MilestoneScreen } = require('../components/MilestoneScreen');
   return (
     <View style={{ flex: 1 }}>
       <MilestoneScreen streak={streak} onClose={onClose} />

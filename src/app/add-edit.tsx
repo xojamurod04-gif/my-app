@@ -4,7 +4,7 @@
 
 import { kAccentColors, kCardColors } from '@/constants/colors';
 import { HabitModel, generateId, todayStr } from '@/models/HabitModel';
-import HabitStorage from '@/storage/HabitStorage';
+import { useHabitStore } from '@/store/useHabitStore';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -25,7 +25,11 @@ export default function AddEditScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
 
-  const [habits, setHabits] = useState<HabitModel[]>([]);
+  const habits = useHabitStore((s) => s.habits);
+  const addHabit = useHabitStore((s) => s.addHabit);
+  const updateHabit = useHabitStore((s) => s.updateHabit);
+  const deleteHabit = useHabitStore((s) => s.deleteHabit);
+
   const [existing, setExisting] = useState<HabitModel | null>(null);
 
   const [name, setName] = useState('');
@@ -33,36 +37,32 @@ export default function AddEditScreen() {
   const [colorIdx, setColorIdx] = useState(0);
 
   useEffect(() => {
-    (async () => {
-      const all = await HabitStorage.loadAll();
-      setHabits(all);
-      if (id) {
-        const found = all.find((h) => h.id === id) ?? null;
-        if (found) {
-          setExisting(found);
-          setName(found.name);
-          setEmoji(found.emoji);
-          setColorIdx(found.colorIndex);
-        }
+    if (id) {
+      const found = habits.find((h) => h.id === id) ?? null;
+      if (found) {
+        setExisting(found);
+        setName(found.name);
+        setEmoji(found.emoji);
+        setColorIdx(found.colorIndex);
       }
-    })();
-  }, [id]);
+    }
+  }, [id, habits]);
 
   function hexOf(color: string): string {
     return color.toUpperCase();
   }
 
-  async function handleSave() {
+  function handleSave() {
     const trimmed = name.trim();
     if (!trimmed) return;
 
     if (existing) {
       // Tahrirlash
-      existing.name = trimmed;
-      existing.colorHex = hexOf(kCardColors[colorIdx]);
-      existing.emoji = emoji;
-      const updated = habits.map((h) => (h.id === existing.id ? existing : h));
-      await HabitStorage.saveAll(updated);
+      updateHabit(existing.id, {
+        name: trimmed,
+        colorHex: hexOf(kCardColors[colorIdx]),
+        emoji,
+      });
     } else {
       // Yangi odat
       const newHabit = new HabitModel({
@@ -72,12 +72,12 @@ export default function AddEditScreen() {
         emoji,
         createdAt: todayStr(),
       });
-      await HabitStorage.saveAll([...habits, newHabit]);
+      addHabit(newHabit);
     }
     router.back();
   }
 
-  async function handleDelete() {
+  function handleDelete() {
     Alert.alert(
       'O\'chirishni tasdiqlaysizmi?',
       '',
@@ -86,9 +86,8 @@ export default function AddEditScreen() {
         {
           text: 'O\'chirish',
           style: 'destructive',
-          onPress: async () => {
-            const updated = habits.filter((h) => h.id !== existing?.id);
-            await HabitStorage.saveAll(updated);
+          onPress: () => {
+            if (existing) deleteHabit(existing.id);
             router.back();
           },
         },

@@ -6,7 +6,7 @@ import * as RNIap from 'react-native-iap';
 import { Platform } from 'react-native';
 import HabitStorage from '../storage/HabitStorage';
 import { kProductId } from '../constants/colors';
-import { supabase } from '../storage/supabaseClient';
+import { supabase } from '../lib/supabase';
 
 // ─── Google Sign-In (expo-auth-session orqali) ───────────────────────────────
 import * as AuthSession from 'expo-auth-session';
@@ -91,7 +91,7 @@ const PremiumManager = {
     } catch {}
   },
 
-  // ── Google Sign-In (expo-auth-session -> Supabase) ──────────────────────────
+  // ── Google Sign-In (expo-auth-session) ──────────────────────────
   async signInWithGoogle(): Promise<{ email: string; name: string } | null> {
     try {
       const clientId = Platform.select({
@@ -131,14 +131,12 @@ const PremiumManager = {
       const { data, error } = await supabase.auth.signInWithIdToken({
         provider: 'google',
         token: idToken,
-        nonce: rawNonce,
       });
-
       if (error) throw error;
 
       return {
-        email: data.user?.email ?? '',
-        name: data.user?.user_metadata?.full_name ?? '',
+        email: data.user?.email || 'user@gmail.com',
+        name: data.user?.user_metadata?.full_name || 'Google User',
       };
     } catch (e) {
       console.warn('signInWithGoogle error:', e);
@@ -146,7 +144,7 @@ const PremiumManager = {
     }
   },
 
-  // ── Apple Sign-In (expo-apple-authentication -> Supabase) ───────────────────
+  // ── Apple Sign-In (expo-apple-authentication) ───────────────────
   async signInWithApple(): Promise<{ email: string; name: string } | null> {
     try {
       const AppleAuth = await import('expo-apple-authentication');
@@ -165,12 +163,11 @@ const PremiumManager = {
         provider: 'apple',
         token: credential.identityToken,
       });
-
       if (error) throw error;
 
       return {
-        email: data.user?.email ?? '',
-        name: `${credential.fullName?.givenName ?? ''} ${credential.fullName?.familyName ?? ''}`.trim() || data.user?.user_metadata?.full_name || '',
+        email: data.user?.email || credential.email || 'apple@user.com',
+        name: data.user?.user_metadata?.full_name || `${credential.fullName?.givenName ?? ''} ${credential.fullName?.familyName ?? ''}`.trim() || 'Apple User',
       };
     } catch (e: any) {
       if (e?.code === 'ERR_REQUEST_CANCELED') return null;

@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import PremiumManager from '../managers/PremiumManager';
+import { useHabitStore } from '../store/useHabitStore';
 
 interface Props {
   onPurchased: () => void;
@@ -44,15 +45,23 @@ export default function UpgradeSheet({ onPurchased, onDismiss }: Props) {
     if (ok) onPurchased();
   }
 
+  const setUser = useHabitStore((s) => s.setUser);
+
   async function handleGoogle() {
     const user = await PremiumManager.signInWithGoogle();
-    if (user) console.log('Google signed in:', user);
+    if (user) {
+      console.log('Google signed in:', user);
+      setUser(user);
+    }
   }
 
   async function handleApple() {
     if (Platform.OS !== 'ios') return;
     const user = await PremiumManager.signInWithApple();
-    if (user) console.log('Apple signed in:', user);
+    if (user) {
+      console.log('Apple signed in:', user);
+      setUser(user);
+    }
   }
 
   return (
@@ -99,13 +108,21 @@ export default function UpgradeSheet({ onPurchased, onDismiss }: Props) {
 
       {/* Sign-in buttons */}
       <View style={styles.signInRow}>
-        <TouchableOpacity style={styles.googleBtn} onPress={handleGoogle}>
-          <Text style={styles.googleText}>🔑 Google</Text>
-        </TouchableOpacity>
-        {Platform.OS === 'ios' && (
-          <TouchableOpacity style={styles.appleBtn} onPress={handleApple}>
-            <Text style={styles.appleText}>🍎 Apple</Text>
-          </TouchableOpacity>
+        {useHabitStore((s) => s.isAuthenticated) ? (
+          <Text style={styles.restoreText}>
+            Tizimga kirgansiz: {useHabitStore((s) => s.user?.email)}
+          </Text>
+        ) : (
+          <>
+            <TouchableOpacity style={styles.googleBtn} onPress={handleGoogle}>
+              <Text style={styles.googleText}>🔑 Google</Text>
+            </TouchableOpacity>
+            {Platform.OS === 'ios' && (
+              <TouchableOpacity style={styles.appleBtn} onPress={handleApple}>
+                <Text style={styles.appleText}>🍎 Apple</Text>
+              </TouchableOpacity>
+            )}
+          </>
         )}
       </View>
 

@@ -4,7 +4,6 @@
 
 import { Platform } from 'react-native';
 import HabitStorage from '../storage/HabitStorage';
-import { supabase } from '../storage/supabaseClient';
 
 export const GOOGLE_CLIENT_ID_IOS = 'YOUR_IOS_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
 export const GOOGLE_CLIENT_ID_ANDROID = 'YOUR_ANDROID_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
@@ -53,38 +52,16 @@ const PremiumManager = {
     // No-op
   },
 
-  // ── Google Sign-In (Web -> Supabase OAuth) ───────────────────────────────────
+  // ── Google Sign-In (Web mock) ───────────────────────────────────
   async signInWithGoogle(): Promise<{ email: string; name: string } | null> {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
-        },
-      });
-      if (error) throw error;
-      return null;
-    } catch (e) {
-      console.warn('signInWithGoogle error:', e);
-      return null;
-    }
+    console.warn('signInWithGoogle is not fully implemented on Web without a backend');
+    return null;
   },
 
-  // ── Apple Sign-In (Web -> Supabase OAuth) ────────────────────────────────────
+  // ── Apple Sign-In (Web mock) ────────────────────────────────────
   async signInWithApple(): Promise<{ email: string; name: string } | null> {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'apple',
-        options: {
-          redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
-        },
-      });
-      if (error) throw error;
-      return null;
-    } catch (e) {
-      console.warn('signInWithApple error:', e);
-      return null;
-    }
+    console.warn('signInWithApple is not fully implemented on Web without a backend');
+    return null;
   },
 };
 

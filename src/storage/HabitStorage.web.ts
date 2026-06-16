@@ -1,11 +1,22 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// HABIT STORAGE — MMKV wrapper
+// HABIT STORAGE — Web (localStorage) wrapper
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { MMKV } from 'react-native-mmkv';
 import { HabitModel, HabitJSON } from '../models/HabitModel';
 
-export const storage = new MMKV();
+export const storage = {
+  getString: (key: string) => {
+    if (typeof window !== 'undefined') return window.localStorage.getItem(key) || undefined;
+    return undefined;
+  },
+  set: (key: string, value: string | boolean) => {
+    if (typeof window !== 'undefined') window.localStorage.setItem(key, String(value));
+  },
+  getBoolean: (key: string) => {
+    if (typeof window !== 'undefined') return window.localStorage.getItem(key) === 'true';
+    return false;
+  },
+};
 
 const HABITS_KEY = 'momentum_habits';
 const PREMIUM_KEY = 'momentum_premium';

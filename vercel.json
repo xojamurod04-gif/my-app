@@ -1,4 +1,6 @@
 {
+  "buildCommand": "expo export",
+  "outputDirectory": "dist",
   "rewrites": [
     {
       "source": "/(.*)",
