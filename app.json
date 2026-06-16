@@ -36,7 +36,13 @@
           }
         }
       ],
-      "react-native-iap"
+      [
+        "react-native-iap",
+        {
+          "paymentProvider": "Play Store"
+        }
+      ],
+      "expo-apple-authentication"
     ],
     "experiments": {
       "typedRoutes": true,
