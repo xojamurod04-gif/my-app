@@ -55,5 +55,16 @@
     "web": "expo start --web",
     "lint": "expo lint"
   },
-  "private": true
+  "private": true,
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "exclude": [
+          "expo-av",
+          "expo-modules-jsi"
+        ],
+        "listUnknownPackages": false
+      }
+    }
+  }
 }
